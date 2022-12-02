@@ -1,0 +1,59 @@
+1. 每次rerender,轉換成一般函數 執行，會是怎樣呢
+2. 除了setState,有什麼條件可以觸發rerender呢
+3. 父元件 setState,是否會造成 子元件 rerender?
+4. 為什麼React需要把 function 放到 dependency呢
+5. Function執行 跟 Component 放到JSX裏頭,有什麼區別
+6. 把Component從 JSX 拔出來 變成變數,是OK的嗎,是否會有效能issue
+7. 道理我都懂:但useMemo 跟 useCallBack 到底幫助多大
+8. 為什麼useEffect被觸發兩次
+9. useRef 從渲染後,還是同一個ref嗎?
+10. useEffect的清除會在什麼時候觸發
+11. useMemo vs React.memo
+12. 非condition下使用React.lazy,有效嗎
+
+
+For: 2、3
+Quick: 父元件 有兩個state,一個counter 一個object
+大發現: 在元件中setState 同一個number, 並不會造成元件本身rerender, wow
+大發現: 子元件rerender 不不不不 代表 prop 一定有變!!
+大發現: 父元件rerender 代表 state 一定有變!!
+
+結論: useEffect的dependency 是 'Object.is()' 比較的結果 , 而就算某prop是物件
+也不代表每次都不同,只要我setState的 使用同一個物件就可以達到不觸發effect
+by the way 我還發現到, 只要父元件執行渲染,就會觸發子元件渲染(跟我之前從vue學到的一樣)
+參考: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is
+
+Case1: [v]
+行為: 子元件吃counter參數, 觀察useEffect(by counter)
+猜測: (counter change, counter 若是不同數字, 就會觸發, 反之不會觸發)
+實際: 我想的對
+
+Case2: [x]
+行為: 子元件吃object參數, 觀察useEffect(by object)
+猜測: (counter change, object 持續往子元件傳, 且每次都是不同ref, 我估計每次都會觸發useEffect)
+實際: (會觸發子元件 render, 但不會觸發effect)
+大膽假設: props 傳入的是同個reference
+
+
+For: 4
+
+For: 8
+猜測: useEffect只有在dependency為[]的時候會被執行2次
+實際: 錯誤, dependency不管是什麼,嚴格模式 + dev環境下, useEffect created時都會觸發兩次, 但這只發生在created時,
+過了這階段, useEffect就只會觸發1次(回歸正常)
+原因: React官方覺得這可以幫助開發者更注意 [需要清理的情況], 但需要清理的情況通常很少, 變成需要為了開發環境寫些阻擋
+來規避一些常見的操作(例如打api) 
+
+For: 10
+猜測: useEffect的清除只會發生在destroyed的時機
+實際: 錯誤, 正常情況,清除會發生在 [if沒有依賴,會在destroyed時被觸發] [if有依賴,會在destroyed時、依賴變更時被觸發]
+特殊情況: case8, react會刻意在created時多執行一次清理、重建 (PS: 只有useEffect被特殊處理,實際上並不是 create => destroy => create
+看console就知道了, render的部分沒有多一次)
+
+
+For: 12
+答案: 有效
+
+
+
+
